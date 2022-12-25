@@ -38,28 +38,28 @@ def jointsOutput(img, bodyParts, proto, model, threshold):
     joints = []
     for i in range(len(bodyParts)):
 
-        # 신체 부위의 confidence map
-        prob_map = output[0, i, :, :]
+        # Confidence Map
+        confidenceMap = output[0, i, :, :]
 
-        # 최소값, 최대값, 최소값 위치, 최대값 위치
-        minVal, prob, minLoc, point = cv2.minMaxLoc(prob_map)
+        # Minimum Value, Maximum Value, Minimum Location, Maximum Location
+        minVal, maxVal, minLoc, maxVal = cv2.minMaxLoc(confidenceMap)
 
-        x = int((imgWidth * point[0]) / outWidth)
-        y = int((imgHeight * point[1]) / outHeight)
+        x = int((imgWidth * maxVal[0]) / outWidth)
+        y = int((imgHeight * maxVal[1]) / outHeight)
 
-        if prob > threshold:  # [pointed]
-            cv2.circle(img, (x, y), 5, (0, 255, 255), thickness=-1, lineType=cv2.FILLED)
+        if maxVal > threshold:  # Positioned
+            cv2.circle(img, (x, y), 3, (0, 255, 255), thickness=-1, lineType=cv2.FILLED)
             cv2.putText(img, str(i), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1, lineType=cv2.LINE_AA)
             joints.append((x, y))
 
-        else:  # [not pointed]
-            cv2.circle(img, (x, y), 5, (0, 255, 255), thickness=-1, lineType=cv2.FILLED)
+        else:  # Not Positioned
+            cv2.circle(img, (x, y), 3, (0, 255, 255), thickness=-1, lineType=cv2.FILLED)
             cv2.putText(img, str(i), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 1, lineType=cv2.LINE_AA)
             joints.append(None)
 
     # Image Output
-    #cv2.imshow("Joints", img)
-    #cv2.waitKey(0)
+    # cv2.imshow("Joints", img)
+    # cv2.waitKey(0)
     return img, joints
 
 def linesOutput(img, bodyPairs, joints):
@@ -68,6 +68,6 @@ def linesOutput(img, bodyPairs, joints):
         part_b = pair[1]  # Neck: 1
         if joints[part_a] and joints[part_b]:
             cv2.line(img, joints[part_a], joints[part_b], (0, 255, 0), 3, cv2.LINE_8)
-    cv2.imshow("Lines", img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    #cv2.imshow("Lines", img)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
