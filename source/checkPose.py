@@ -42,10 +42,11 @@ def jointsOutput(img, bodyParts, proto, model, threshold):
         confidenceMap = output[0, i, :, :]
 
         # Minimum Value, Maximum Value, Minimum Location, Maximum Location
-        minVal, maxVal, minLoc, maxVal = cv2.minMaxLoc(confidenceMap)
 
-        x = int((imgWidth * maxVal[0]) / outWidth)
-        y = int((imgHeight * maxVal[1]) / outHeight)
+        minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(confidenceMap)
+
+        x = int((imgWidth * maxLoc[0]) / outWidth)
+        y = int((imgHeight * maxLoc[1]) / outHeight)
 
         if maxVal > threshold:  # Positioned
             cv2.circle(img, (x, y), 3, (0, 255, 255), thickness=-1, lineType=cv2.FILLED)
