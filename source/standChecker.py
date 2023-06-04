@@ -3,6 +3,8 @@ import numpy as np
 import cv2
 import math
 
+
+# Init
 partPointsLoc = {
     0: 0, # 코
     1: 0, # 왼쪽 눈
@@ -22,11 +24,6 @@ partPointsLoc = {
     15: 0,# 왼쪽 발목
     16: 0 # 오른쪽 발목
     }
-
-pointLine = [
-    (0, 1), (0, 2), (1, 3), (2, 4), (0, 5), (0, 6),
-    (5, 7), (7, 9), (6, 8), (8, 10), (5, 6), (5, 11), (6, 12),
-    (11, 12), (11, 13), (13, 15), (12, 14), (14, 16)]
 
 pointLines = {
     0 : [0, 1], # 코    -왼쪽눈
@@ -70,54 +67,77 @@ lineLens = {
     17 :0 #오른쪽무릎-오른쪽발목
 }
 
-image_path = "./img/st1.jpg"
-image = tf.io.read_file(image_path)
-image = tf.image.decode_jpeg(image)
+location = {}
 
-input_image = tf.expand_dims(image, axis=0)
-input_image = tf.image.resize_with_pad(input_image, 256, 256)
 
-model_path = "./model/lite-model_movenet_singlepose_thunder_tflite_float16_4.tflite"
-#model_path = "./model/movenet_lightning_fp16.tflite"
-interpreter = tf.lite.Interpreter(model_path)
-interpreter.allocate_tensors()
+# Function
+def valueCheck(img_path, model_path):
+    img = tf.io.read_file(img_path)
+    img = tf.image.decode_jpeg(img)
 
-input_image = tf.cast(input_image, dtype=tf.uint8)
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
-interpreter.set_tensor(input_details[0]['index'], input_image.numpy())
-interpreter.invoke()
-keypoints = interpreter.get_tensor(output_details[0]['index'])
+    input_img = tf.expand_dims(img, axis=0)
+    input_img = tf.image.resize_with_pad(input_img, 256, 256)
 
-width = 640
-height = 640
+    interpreter = tf.lite.Interpreter(model_path)
+    interpreter.allocate_tensors()
 
-input_image = tf.expand_dims(image, axis=0)
-input_image = tf.image.resize_with_pad(input_image, width, height)
-input_image = tf.cast(input_image, dtype=tf.uint8)
+    input_img = tf.cast(input_img, dtype=tf.uint8)
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    interpreter.set_tensor(input_details[0]['index'], input_img.numpy())
+    interpreter.invoke()
+    keypoints = interpreter.get_tensor(output_details[0]['index'])
 
-image_np = np.squeeze(input_image.numpy(), axis=0)
-image_np = cv2.resize(image_np, (width, height))
-image_np = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+    width = 640
+    height = 640
 
-for keypoint in keypoints[0][0]:
-    x = int(keypoint[1] * width)
-    y = int(keypoint[0] * height)
+    input_img = tf.expand_dims(img, axis=0)
+    input_img = tf.image.resize_with_pad(input_img, width, height)
+    input_img = tf.cast(input_img, dtype=tf.uint8)
 
-    cv2.circle(image_np, (x, y), 4, (0, 0, 255), -1)
+    img_np = np.squeeze(input_img.numpy(), axis=0)
+    img_np = cv2.resize(img_np, (width, height))
+    img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
 
-for i in range(18):
-    x1 = int(keypoints[0][0][pointLines[i][0]][1] * width)
-    y1 = int(keypoints[0][0][pointLines[i][0]][0] * height)
+    loc = {}
 
-    x2 = int(keypoints[0][0][pointLines[i][1]][1] * width)
-    y2 = int(keypoints[0][0][pointLines[i][1]][0] * height)
+    for keypoint, i in zip(keypoints[0][0], range(17)):
+        x = int(keypoint[1] * width)
+        y = int(keypoint[0] * height)
+        loc[i] = [x, y]
 
-    cv2.line(image_np, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.circle(img_np, (x, y), 4, (0, 0, 255), -1)
 
-    xDiff = abs(x2-x1)
-    yDiff = abs(y2-y1)
-    lineLens[i] = math.sqrt(xDiff**2 + yDiff**2)
+    locDis = {}
 
-cv2.imshow("pose estimation", image_np)
-cv2.waitKey()
+    for i in range(18):
+        x1 = int(keypoints[0][0][pointLines[i][0]][1] * width)
+        y1 = int(keypoints[0][0][pointLines[i][0]][0] * height)
+
+        x2 = int(keypoints[0][0][pointLines[i][1]][1] * width)
+        y2 = int(keypoints[0][0][pointLines[i][1]][0] * height)
+
+        cv2.line(img_np, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        xDiff = abs(x2-x1)
+        yDiff = abs(y2-y1)
+        locDis[i] = math.sqrt(xDiff**2 + yDiff**2)
+
+    cv2.imshow("pose estimation", img_np)
+    cv2.waitKey()
+    return loc, locDis
+
+def centerValue(a, b, c):
+    return [(a[0]+b[0]+c[0])/3, (a[1]+b[1]+c[1])/3]
+
+def ratioCheck(loc, distances):
+    headCorrection = (lambda a, b: [a[0]-b[0], a[1]-b[1]])(centerValue(loc[0], loc[1], loc[2]), centerValue(loc[0], loc[3], loc[4]))
+    rightUpperArmRatio = distances[8] / distances[10]
+    rightForearmRatio = distances[9] / distances[8]
+    return [headCorrection, rightUpperArmRatio, rightForearmRatio]
+
+if __name__ == '__main__':
+    location, locationDistance = valueCheck(img_path = "./img/st1.jpg",
+                                            model_path = "./model/lite-model_movenet_singlepose_thunder_tflite_float16_4.tflite")
+    ratioCheck(location, locationDistance)
+    print(ratioCheck(location, locationDistance))
